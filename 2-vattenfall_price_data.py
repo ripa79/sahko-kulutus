@@ -1,23 +1,30 @@
 import json
 import csv
-
 import requests
+from datetime import datetime
 
 headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"
 }
 
-url = "https://www.vattenfall.fi/api/price/spot/2023-01-01/2023-12-31?lang=fi"
+# Get the current year
+current_year = datetime.now().year
+
+# Generate the start and end dates for the current year
+start_date = f"{current_year}-01-01"
+end_date = f"{current_year}-12-31"
+
+url = f"https://www.vattenfall.fi/api/price/spot/{start_date}/{end_date}?lang=fi"
 response = requests.get(url, headers=headers)
 
 if response.status_code == 200:
-    data = response.json() # Parse the JSON data from the response
+    data = response.json()  # Parse the JSON data from the response
     print("Data has been loaded from the URL")
 else:
     print("Error:", response.status_code)
-    exit() # Exit the program if there is an error
+    exit()  # Exit the program if there is an error
 
-csv_filename = "downloads/elenia_hinnat.csv"
+csv_filename = f"downloads/elenia_hinnat_{current_year}.csv"
 
 # Extract the keys from the first dictionary to use as header
 fieldnames = data[0].keys()
