@@ -32,7 +32,7 @@ for filename in os.listdir(SOURCE_DIR):
         df = pd.read_csv(filepath)
 
         # Delete existing data from the source table
-        delete_query = sql.SQL("DELETE FROM \"2023_netto\"")
+        delete_query = sql.SQL("DELETE FROM \"2024_netto\"")
         cur.execute(delete_query)
 
         # Commit the deletion
@@ -41,7 +41,7 @@ for filename in os.listdir(SOURCE_DIR):
         # Insert DataFrame into PostgreSQL table
         for index, row in df.iterrows():
             insert_query = sql.SQL(
-                "INSERT INTO \"2023_netto\" (\"timeStamp\", \"Kulutus Wh\", \"Tuotanto Wh\", \"timeStampDay\", \"timeStampHour\", \"value\", "
+                "INSERT INTO \"2024_netto\" (\"timeStamp\", \"Kulutus Wh\", \"Tuotanto Wh\", \"timeStampDay\", \"timeStampHour\", \"value\", "
                 "\"priceArea\", \"unit\", \"Electricity price c/kwh\", \"Netto kulutus Wh\", \"production\", "
                 "\"consumption\", \"consumption_cent\", \"total_price\", \"month\""
                 ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"

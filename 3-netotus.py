@@ -8,7 +8,7 @@ import xlsxwriter
 locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
 # Read the csv files with semicolon as delimiter
-df1 = pd.read_csv("./downloads/2023.csv", sep=";")
+df1 = pd.read_csv("./downloads/2024.csv", sep=";")
 df1.rename(columns={"Aika": "timeStamp"}, inplace=True)
 df2 = pd.read_csv("./downloads/elenia_hinnat.csv", sep=";")
 
@@ -65,10 +65,10 @@ def calculate(row):
 df[["production", "consumption","consumption_cent", "total_price", "month"]] = df.apply(calculate, axis=1)
 
 # Save the modified dataframe to a new csv file
-#df.to_csv("./2023_netto.csv", sep=",", index=False)
-df.to_csv("./source/2023_netto.csv", index=False)
+#df.to_csv("./2024_netto.csv", sep=",", index=False)
+df.to_csv("./source/2024_netto.csv", index=False)
 # Save the dataframe to an Excel file with the desired name and freeze the top row
-excel_writer = pd.ExcelWriter("./2023_netto.xlsx", engine='xlsxwriter')
+excel_writer = pd.ExcelWriter("./2024_netto.xlsx", engine='xlsxwriter')
 df3.to_excel(excel_writer, index=False, sheet_name='Sheet1', header=True)
 
 # Get the xlsxwriter workbook and worksheet objects

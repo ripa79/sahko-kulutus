@@ -10,7 +10,7 @@ import os
 downloadDir = f"{os.getcwd()}//downloads//"
 # Make sure path exists.
 # Path(downloadDir).mkdir(parents=True, exist_ok=True)
-# output file will be YYYY.csv (for example 2023.csv)
+# output file will be YYYY.csv (for example 2024.csv)
 
 # Set Preferences.
 preferences = {"download.default_directory": downloadDir,

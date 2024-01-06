@@ -7,7 +7,7 @@ headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"
 }
 
-url = "https://www.vattenfall.fi/api/price/spot/2023-01-01/2023-12-31?lang=fi"
+url = "https://www.vattenfall.fi/api/price/spot/2024-01-01/2024-12-31?lang=fi"
 response = requests.get(url, headers=headers)
 
 if response.status_code == 200:
