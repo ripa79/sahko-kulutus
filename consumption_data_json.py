@@ -11,7 +11,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 import random
 import requests
 import json
-from urllib.parse import urlencode
+import urllib
+from urllib.parse import urlencode, unquote
 
 if len(sys.argv) != 3:
     print("Usage: python script.py <username> <password>")
@@ -32,7 +33,7 @@ preferences = {"download.default_directory": downloadDir,
                "safebrowsing.enabled": True}
 chromeOptions = webdriver.ChromeOptions()
 chromeOptions.add_argument("--window-size=1480x560")
-chromeOptions.add_argument("--headless")
+#chromeOptions.add_argument("--headless")
 chromeOptions.add_experimental_option("prefs", preferences)
 
 # Website URL
@@ -40,6 +41,9 @@ auth_url = 'https://idm.asiakas.elenia.fi/'
 
 # Create a new Chrome browser instance
 driver = webdriver.Chrome(options=chromeOptions)
+
+# Get the User-Agent from the Selenium WebDriver
+user_agent = driver.execute_script("return navigator.userAgent;")
 
 # Navigate to the authentication page
 driver.get(auth_url)
@@ -56,6 +60,8 @@ cookie_button.click()
 
 # Find the username input field
 username_element = driver.find_element(By.XPATH, "//input[@id='signin-email']")
+password_element = driver.find_element(By.XPATH, "//input[@id='password']")
+#print(password_element)
 
 # Create an ActionChains object
 actions = ActionChains(driver)
@@ -70,7 +76,6 @@ print("Filling in the username")
 actions.send_keys(username).perform()
 time.sleep(random.uniform(0.5, 1.0))
 
-
 # Press TAB to move to the next field (should be password)
 print("Pressing TAB to move to password field")
 actions.send_keys(Keys.TAB).perform()
@@ -82,9 +87,7 @@ if active_element.get_attribute('id') == 'password':
     print("Successfully moved to password field")
     # Type the password
     print("Filling in the password")
-    for char in password:
-        actions.send_keys(char).perform()
-        time.sleep(random.uniform(0.05, 0.2))
+    actions.send_keys(password).perform()
 else:
     print("Failed to move to password field")
     # Here you could implement a fallback method or error handling
@@ -113,6 +116,28 @@ time.sleep(2)
 
 cookies = driver.get_cookies()
 
+# lets get the user name from cookie that ends userData
+
+user_data = None
+for cookie in cookies:
+    if cookie['name'].endswith('.userData'):
+        #print(cookie['value'])
+        # url decode the value
+        user_data = json.loads(urllib.parse.unquote(cookie['value']))
+        break
+
+if user_data:
+    # Extract the 'sub' value from UserAttributes
+    sub_value = next((attr['Value'] for attr in user_data['UserAttributes'] if attr['Name'] == 'sub'), None)
+    
+    if sub_value:
+        print(f"User sub value: {sub_value}")
+    else:
+        print("Sub value not found in user data")
+else:
+    print("User data cookie not found")
+
+
 # get the access token from the cookies it ends accessToken
 access_token = None
 for cookie in cookies:
@@ -122,7 +147,7 @@ for cookie in cookies:
 
 # Print the access token
 if access_token:
-    print("Access Token:", access_token)
+    print("Access Token: found")
 else:
     print("Access Token not found")
 
@@ -138,18 +163,86 @@ if not bearer_token:
 
 print("Fetching consumption data from API")
 
-url = "https://api.asiakas.aina-extranet.com/consumption/consumption/energy/FI_VFV000_2274887"
+# Set up headers with bearer token
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Accept": "application/json"
+}
+
+# use the sub value in get request to https://api.asiakas.aina-extranet.com/idm/customerMetadata?sub=
+metadata_url = f"https://api.asiakas.aina-extranet.com/idm/customerMetadata?sub={sub_value}"
+
+try:
+    # Make the GET request to customerMetadata
+    response = requests.get(metadata_url, headers=headers)
+    response.raise_for_status()  # Raise an exception for HTTP errors
+
+    # Parse the JSON response
+    metadata = response.json()
+
+    # Extract the first customer_id from customer_ids
+    customer_ids = metadata.get("data", {}).get("customer_ids", [])
+    if customer_ids:
+        customer_id = customer_ids[0]
+        print(f"Customer ID retrieved: {customer_id}")
+    else:
+        print("No customer IDs found in metadata response")
+
+except requests.exceptions.RequestException as e:
+    print(f"Error fetching customer metadata: {e}")
+
+headers = {
+    "Authorization": f"Bearer {bearer_token}",
+    "Accept": "*/*",
+    "content-type": "application/json",
+    "User-Agent": user_agent,
+    "Origin": "https://asiakas.elenia.fi",
+}
+
+# fetch https://api.asiakas.aina-extranet.com/customer/customers?customerId[]=
+
+customer_metadata_url = f"https://api.asiakas.aina-extranet.com/customer/customers?customerId[]={customer_id}"
+try:
+    response = requests.get(customer_metadata_url, headers=headers)
+    response.raise_for_status()
+    metadata = response.json()
+    #print(metadata)
+    
+    metering_point_id = None
+    if 'data' in metadata and metadata['data']:
+        contracts = metadata['data'][0].get('contracts', [])
+        if contracts:
+            metering_point = contracts[0].get('meteringPoint', {})
+            metering_point_id = metering_point.get('meteringPointId')
+            if metering_point_id:
+                print(f"Metering Point ID retrieved: {metering_point_id}")
+            else:
+                print("No meteringPointId found in the first contract")
+        else:
+            print("No contracts found in metadata response")
+    else:
+        print("No data found in metadata response")
+
+except requests.exceptions.RequestException as e:
+    print(f"Error fetching customer account metadata: {e}")
+    sys.exit(1)
+
+# ... existing code ...
+
+# metering point id
+metering_point_id = metering_point_id
+# API URL
+url = f"https://api.asiakas.aina-extranet.com/consumption/consumption/energy/{metering_point_id}"
 
 params = {
-    "customerId": "elenia_7191131",
+    "customerId": customer_id,
     "end": "2025-01-01T00:00:00+02:00",
     "resolution": "month",
     "netted": "true",
     "start": "2024-01-01T00:00:00+02:00"
 }
 
-# Get the User-Agent from the Selenium WebDriver
-user_agent = driver.execute_script("return navigator.userAgent;")
+
 
 # Set up the headers
 headers = {
@@ -189,9 +282,4 @@ try:
 except requests.exceptions.RequestException as e:
     print(f"An error occurred: {e}")
 
-# Print debug information
-print(f"Request URL: {response.request.url}")
-print(f"Request headers: {response.request.headers}")
-print(f"Response headers: {response.headers}")
-
-# ... (keep the rest of the code, including closing the driver)
+driver.quit()
