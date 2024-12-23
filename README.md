@@ -5,8 +5,6 @@
 create a .env file with the following variables:
 
 ```
-VATTENFALL_USERNAME=<your username>
-VATTENFALL_PASSWORD=<your password>
 ELINIA_USERNAME=<your username>
 ELINIA_PASSWORD=<your password>
 SPOT_MARGIN=<your spot margin>
