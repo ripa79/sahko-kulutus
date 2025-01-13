@@ -1,21 +1,26 @@
+import sys
 import json
 import csv
 import requests
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36"
 }
 
 # Get the current year
-current_year = datetime.now().year
-
+#current_year = datetime.now().year
+current_year = os.getenv('YEAR')
 # Generate the start and end dates for the current year
 start_date = f"{current_year}-01-01"
 end_date = f"{current_year}-12-31"
 
 url = f"https://www.vattenfall.fi/api/price/spot/{start_date}/{end_date}?lang=fi"
+print(f"Loading data from {url}...")
 response = requests.get(url, headers=headers)
 
 if response.status_code == 200:

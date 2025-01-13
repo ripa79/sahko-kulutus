@@ -117,6 +117,10 @@ def print_analysis(analysis):
     print(f"{Colors.YELLOW}Annual Summary{Colors.RESET}")
     print(f"{Colors.CYAN}{'=' * 80}{Colors.RESET}")
 
+    # Add total year consumption with average price calculation
+    total_year_cost_avg = analysis['total_consumption'] * analysis['average_price'] / 100
+    print(f"{Colors.CYAN}Total year cost with average price ({analysis['average_price']:.2f} snt/kWh): {Colors.YELLOW}{total_year_cost_avg:.2f} EUR{Colors.RESET}")
+
     average_year_price = analysis['total_cost'] / (analysis['total_consumption'] / 100)
     print(f"{Colors.CYAN}Average Year Actual Price: {Colors.YELLOW}{average_year_price:.2f} snt/kWh{Colors.RESET}")
     print(f"{Colors.CYAN}Spot price average for the whole year: {Colors.YELLOW}{analysis['average_price']:.2f} snt/kWh{Colors.RESET}")

@@ -1,18 +1,8 @@
 import sys
 import time
-import random
 import json
 import os
-import urllib
-from urllib.parse import unquote
 import requests
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.common.action_chains import ActionChains
 from dotenv import load_dotenv
 import logging
 
@@ -26,6 +16,47 @@ logging.basicConfig(level=logging.INFO,
                     datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
+def get_cognito_token(username, password):
+    cognito_url = "https://cognito-idp.eu-west-1.amazonaws.com/"
+    headers = {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth'
+    }
+    payload = {
+        "AuthFlow": "USER_PASSWORD_AUTH",
+        "ClientId": "k4s2pnm04536t1bm72bdatqct",
+        "AuthParameters": {
+            "USERNAME": username,
+            "PASSWORD": password
+        },
+        "ClientMetadata": {}
+    }
+    
+    response = requests.post(cognito_url, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()['AuthenticationResult']['AccessToken']
+    else:
+        logger.error(f"Authentication failed: {response.text}")
+        return None
+
+def make_request_with_retry(method, url, max_retries=5, **kwargs):
+    for attempt in range(max_retries):
+        try:
+            response = requests.request(method, url, **kwargs)
+            if response.status_code == 504:
+                wait_time = 2 ** attempt  # exponential backoff
+                logger.warning(f"Got 504 error, retry attempt {attempt + 1}/{max_retries} after {wait_time} seconds")
+                time.sleep(wait_time)
+                continue
+            return response
+        except requests.exceptions.RequestException as e:
+            if attempt == max_retries - 1:
+                raise
+            wait_time = 2 ** attempt
+            logger.warning(f"Request failed, retry attempt {attempt + 1}/{max_retries} after {wait_time} seconds: {e}")
+            time.sleep(wait_time)
+    return None
+
 def fetch_consumption_data():
     # Load environment variables from .env file
     load_dotenv()
@@ -37,89 +68,31 @@ def fetch_consumption_data():
         logger.error("USERNAME and PASSWORD must be set in the .env file.")
         sys.exit(1)
 
-    downloadDir = f"{os.getcwd()}//downloads//"
-    
-    # Set Preferences.
-    preferences = {"download.default_directory": downloadDir,
-                   "download.prompt_for_download": False,
-                   "directory_upgrade": True,
-                   "safebrowsing.enabled": True}
-    chromeOptions = webdriver.ChromeOptions()
-    chromeOptions.add_argument("--window-size=1480x560")
-    chromeOptions.add_experimental_option("prefs", preferences)
-
-    # Website URL
-    auth_url = 'https://idm.asiakas.elenia.fi/'
-
-    # Create a new Chrome browser instance
-    driver = webdriver.Chrome(options=chromeOptions)
-
-    # Get the User-Agent from the Selenium WebDriver
-    user_agent = driver.execute_script("return navigator.userAgent;")
-
-    # Navigate to the authentication page
-    driver.get(auth_url)
-    delay = 3  # seconds
-    try:
-        myElem = WebDriverWait(driver, delay).until(EC.presence_of_element_located((By.ID, 'signin-email')))
-        logger.info("Page is ready!")
-    except TimeoutException:
-        logger.warning("Loading took too much time!")
-
-    # Find cookie button and click it "allow all cookies"
-    cookie_button = driver.find_element(By.XPATH, '//button[@id="CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"]')
-    cookie_button.click()
-
-    # Find the username and password input fields
-    username_element = driver.find_element(By.XPATH, "//input[@id='signin-email']")
-    password_element = driver.find_element(By.XPATH, "//input[@id='password']")
-
-    # Create an ActionChains object
-    actions = ActionChains(driver)
-
-    # Login process
-    logger.info("Logging in...")
-    actions.move_to_element(username_element).click().send_keys(username).send_keys(Keys.TAB).send_keys(password).send_keys(Keys.TAB).send_keys(Keys.ENTER).perform()
-
-    time.sleep(5)
-    ainalab_button = driver.find_element(By.XPATH, '//button[@aria-label="Elenia Aina"]')
-    ainalab_button.click()
-
-    time.sleep(2)
-
-    cookies = driver.get_cookies()
-
-    # Extract user data and access token from cookies
-    user_data = next((json.loads(unquote(cookie['value'])) for cookie in cookies if cookie['name'].endswith('.userData')), None)
-    access_token = next((cookie['value'] for cookie in cookies if cookie['name'].endswith('.accessToken')), None)
-
-    if user_data:
-        sub_value = next((attr['Value'] for attr in user_data['UserAttributes'] if attr['Name'] == 'sub'), None)
-        logger.info(f"User sub value: {sub_value}" if sub_value else "Sub value not found in user data")
-    else:
-        logger.warning("User data cookie not found")
-
-    if access_token:
-        logger.info("Access Token: found")
-    else:
-        logger.warning("Access Token not found")
-
-    bearer_token = access_token
-    logger.info(f"Bearer token retrieved: {'Success' if bearer_token else 'Failed'}")
-
+    # Get bearer token from Cognito
+    bearer_token = get_cognito_token(username, password)
     if not bearer_token:
         logger.error("Failed to retrieve bearer token. Exiting.")
-        driver.quit()
         sys.exit(1)
 
-    logger.info("Fetching consumption data from API")
+    logger.info("Bearer token retrieved successfully")
 
     # Set up headers with bearer token
     headers = {
         "Authorization": f"Bearer {bearer_token}",
         "Accept": "application/json",
-        "User-Agent": user_agent,
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
+
+    # Extract sub from bearer token (assuming it's in the token payload)
+    import base64
+    token_parts = bearer_token.split('.')
+    if len(token_parts) > 1:
+        payload = json.loads(base64.b64decode(token_parts[1] + '=' * (-len(token_parts[1]) % 4)).decode('utf-8'))
+        sub_value = payload.get('sub')
+        logger.info(f"Extracted sub value from token: {sub_value}")
+    else:
+        logger.error("Could not extract sub value from token")
+        sys.exit(1)
 
     # Fetch customer metadata
     metadata_url = f"https://api.asiakas.aina-extranet.com/idm/customerMetadata?sub={sub_value}"
@@ -131,7 +104,6 @@ def fetch_consumption_data():
         logger.info(f"Customer ID retrieved: {customer_id}")
     except requests.exceptions.RequestException as e:
         logger.exception(f"Error fetching customer metadata: {e}")
-        driver.quit()
         sys.exit(1)
 
     # Fetch customer account metadata
@@ -144,7 +116,6 @@ def fetch_consumption_data():
         logger.info(f"Metering Point ID retrieved: {metering_point_id}")
     except requests.exceptions.RequestException as e:
         logger.exception(f"Error fetching customer account metadata: {e}")
-        driver.quit()
         sys.exit(1)
 
     # Fetch consumption data
@@ -160,20 +131,19 @@ def fetch_consumption_data():
     headers["X-Amz-Date"] = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
 
     try:
-        response = requests.get(url, params=params, headers=headers)
-        if response.status_code == 200:
+        response = make_request_with_retry('GET', url, params=params, headers=headers)
+        if response and response.status_code == 200:
             data = response.json()
             logger.info("Successfully fetched consumption data")
             with open("downloads/consumption_data.json", "w") as outfile:
                 json.dump(data, outfile, indent=2)
             logger.info("Saved consumption data to consumption_data.json")
         else:
-            logger.error(f"Failed to fetch data. Status code: {response.status_code}")
-            logger.error(f"Response content: {response.text}")
+            logger.error(f"Failed to fetch data. Status code: {response.status_code if response else 'No response'}")
+            if response:
+                logger.error(f"Response content: {response.text}")
     except requests.exceptions.RequestException as e:
-        logger.exception(f"An error occurred: {e}")
-
-    driver.quit()
+        logger.exception(f"An error occurred after all retry attempts: {e}")
 
 def main():
     logger.info("Starting consumption data fetch process")
