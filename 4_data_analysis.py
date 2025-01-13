@@ -6,6 +6,7 @@ import requests
 import pytz
 import os
 from dotenv import load_dotenv
+from dateutil.parser import isoparse  # Add this import
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +29,7 @@ def read_combined_data(filename='combined_data.csv'):
     with open(filepath, 'r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         for row in reader:
-            timestamp = datetime.fromisoformat(row['timestamp'])
+            timestamp = isoparse(row['timestamp'])
             data.append({
                 'date': timestamp.date(),
                 'hour': timestamp.hour,

@@ -9,14 +9,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # constants
-vattenfall_price_data_file = 'downloads/vattenfall_hinnat_2024.csv'
+SPOT_MARGIN = float(os.getenv('SPOT_MARGIN'))
+YEAR = os.getenv('YEAR')
+vattenfall_price_data_file = f'downloads/vattenfall_hinnat_{YEAR}.csv'
 elenia_consumption_data_file = 'downloads/consumption_data.json'
 combined_data_file = 'processed/combined_data.csv'
-SPOT_MARGIN = float(os.getenv('SPOT_MARGIN'))
 
 # Load Elenia consumption data
 with open(elenia_consumption_data_file, 'r') as f:
-    consumption_data = json.load(f)
+    consumption_raw = json.load(f)
+
+# Create dictionary for consumption data
+consumption_dict = {}
+
+# Process consumption data - use netted values
+for month in consumption_raw['months']:
+    if 'hourly_values_netted' in month:
+        for hourly in month['hourly_values_netted']:
+            timestamp = datetime.strptime(hourly['t'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=ZoneInfo("Europe/Helsinki"))
+            consumption_dict[timestamp] = hourly['v'] / 1000  # Convert to kWh
 
 # Load Vattenfall price data
 price_data = {}
@@ -26,22 +37,37 @@ with open(vattenfall_price_data_file, 'r') as f:
         timestamp = datetime.strptime(row['timeStamp'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=ZoneInfo("Europe/Helsinki"))
         price_data[timestamp] = float(row['value'])
 
+# Add debug information
+print("\nDebug Information:")
+print("=================")
+print(f"\nNetted Consumption Data ({len(consumption_dict)} records):")
+print(f"First record: {min(consumption_dict.keys())}")
+print(f"Last record: {max(consumption_dict.keys())}")
+
+print(f"\nPrice Data ({len(price_data)} records):")
+print(f"First record: {min(price_data.keys())}")
+print(f"Last record: {max(price_data.keys())}")
+
+# Add more detailed debug information
+print("\nDetailed Debug Information:")
+print("=================")
+print(f"\nNetted Consumption Data Details:")
+print("Last 5 records:")
+last_keys = sorted(consumption_dict.keys())[-5:]
+for key in last_keys:
+    print(f"{key}: {consumption_dict[key]}")
+
 # Combine data
 combined_data = []
-for entry in consumption_data['data']['productSeries'][0]['data']:
-    timestamp_utc = datetime.strptime(entry['startTime'], '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=ZoneInfo("UTC"))
-    timestamp_helsinki = timestamp_utc.astimezone(ZoneInfo("Europe/Helsinki"))
-    consumption = entry['value']
-    
-    # Find the corresponding price
-    price_timestamp = timestamp_helsinki.replace(minute=0, second=0, microsecond=0)
-    price = price_data.get(price_timestamp)
+for timestamp in consumption_dict:
+    net_consumption = consumption_dict[timestamp]
+    price = price_data.get(timestamp)
     
     if price is not None:
-        cost = consumption * (price + SPOT_MARGIN) / 100  # Convert cents to euros
+        cost = net_consumption * (price + SPOT_MARGIN) / 100  # Convert cents to euros
         combined_data.append({
-            'timestamp': timestamp_helsinki.strftime('%Y-%m-%dT%H:%M:%S%z'),
-            'consumption_kWh': consumption,
+            'timestamp': timestamp.strftime('%Y-%m-%dT%H:%M:%S%z'),
+            'consumption_kWh': net_consumption,
             'price_cents_per_kWh': price,
             'cost_euros': cost
         })
@@ -55,7 +81,8 @@ if not os.path.exists("processed"):
 
 # Write the combined data to a CSV file
 with open(combined_data_file, 'w', newline='') as f:
-    writer = csv.DictWriter(f, fieldnames=['timestamp', 'consumption_kWh', 'price_cents_per_kWh', 'cost_euros'])
+    writer = csv.DictWriter(f, fieldnames=['timestamp', 'consumption_kWh', 
+                                         'price_cents_per_kWh', 'cost_euros'])
     writer.writeheader()
     writer.writerows(combined_data)
 
