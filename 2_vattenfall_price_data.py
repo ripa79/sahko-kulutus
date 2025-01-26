@@ -30,6 +30,11 @@ else:
     print("Error:", response.status_code)
     exit()  # Exit the program if there is an error
 
+# Add VAT (25.5%) to the values
+VAT_RATE = 0.255
+for row in data:
+    row['value'] = round(row['value'] * (1 + VAT_RATE), 2)
+
 # ensure downloads folder exists
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
