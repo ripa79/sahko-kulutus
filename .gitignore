@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
 # Distribution / packaging
 .Python
 build/

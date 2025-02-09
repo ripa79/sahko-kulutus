@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sähkö Kulutus</title>
+</head>
+<body>
+    <h1>Sähkö Kulutus</h1>
+    <div id="content">
+        <p>Loading data...</p>
+    </div>
+    <button id="updateButton">Update Data</button>
+    <div id="error"></div>
+    <script>
+        // Inline script for immediate testing
+        console.log('Page loaded');
+        
+        document.getElementById('updateButton').onclick = async () => {
+            try {
+                const response = await fetch('/api/analysis');
+                const data = await response.json();
+                document.getElementById('content').textContent = 
+                    JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('error').textContent = 
+                    'Error: ' + error.message;
+            }
+        };
+
+        // Load data on page load
+        window.onload = () => document.getElementById('updateButton').click();
+    </script>
+</body>
+</html>
