@@ -101,25 +101,37 @@ function resizeChart(chartElement) {
 function initializeChart(chartId) {
     return new Promise(resolve => {
         const chartElement = document.getElementById(chartId);
-        if (chartElement) {
-            // Wait for next frame to ensure DOM is ready
-            requestAnimationFrame(() => {
-                const plotlyDiv = chartElement.firstElementChild;
-                if (plotlyDiv) {
-                    const containerWidth = chartElement.clientWidth;
-                    const containerHeight = chartElement.clientHeight;
-                    
-                    Plotly.relayout(plotlyDiv, {
-                        width: containerWidth,
-                        height: containerHeight
-                    }).then(resolve);
-                } else {
-                    resolve();
-                }
-            });
-        } else {
+        if (!chartElement) {
+            console.log(`Chart element ${chartId} not found`);
             resolve();
+            return;
         }
+
+        // Wait for next frame to ensure DOM is ready
+        requestAnimationFrame(() => {
+            const plotlyDiv = chartElement.firstElementChild;
+            if (!plotlyDiv || !plotlyDiv._fullLayout) {
+                console.log(`Plotly div not ready for ${chartId}`);
+                resolve();
+                return;
+            }
+
+            try {
+                const containerWidth = chartElement.clientWidth;
+                const containerHeight = chartElement.clientHeight;
+                
+                Plotly.relayout(plotlyDiv, {
+                    width: containerWidth,
+                    height: containerHeight
+                }).then(resolve).catch(err => {
+                    console.warn(`Error resizing chart ${chartId}:`, err);
+                    resolve();
+                });
+            } catch (err) {
+                console.warn(`Error during chart initialization ${chartId}:`, err);
+                resolve();
+            }
+        });
     });
 }
 
