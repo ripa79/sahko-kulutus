@@ -1,0 +1,144 @@
+body {
+    background-color: #181b1f;
+    color: #d8d9da;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-y: auto; /* Enable vertical scrolling */
+}
+
+.container {
+    width: 95%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+h1 {
+    color: #ffffff;
+    margin-bottom: 1.5rem;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    text-align: center;
+}
+
+h2 {
+    font-size: clamp(1.2rem, 2.5vw, 2rem);
+}
+
+h3 {
+    font-size: clamp(1rem, 2vw, 1.5rem);
+}
+
+.nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.nav-link {
+    color: #3274D9;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+}
+
+.nav-link:hover {
+    text-decoration: underline;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.metric-card {
+    background: #212529;
+    border-radius: 4px;
+    padding: 1rem;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+
+.chart-container {
+    background: #212529;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    height: 400px;
+    min-height: 300px;
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Add this to ensure plotly charts fill container */
+.chart-container .js-plotly-plot {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+}
+
+#updateData {
+    background: #3274D9;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+}
+
+#updateData:disabled {
+    background: #1F4271;
+}
+
+#loading {
+    text-align: center;
+    padding: 1rem;
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    color: #3274D9;
+}
+
+#error {
+    display: none;
+    text-align: center;
+    padding: 1rem;
+    background: rgba(224, 47, 68, 0.1);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+}
+
+#content {
+    display: none;
+}
+
+@media (max-width: 480px) {
+    .nav-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .container {
+        width: 100%;
+        padding: 0.5rem;
+    }
+
+    .chart-container {
+        height: 300px; /* Smaller height on mobile */
+        min-height: 250px;
+    }
+}
