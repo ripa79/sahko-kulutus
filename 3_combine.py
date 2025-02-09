@@ -22,11 +22,22 @@ with open(elenia_consumption_data_file, 'r') as f:
 # Create dictionary for consumption data
 consumption_dict = {}
 
-# Process consumption data - use netted values
+# Process consumption data - use regular hourly values instead of netted
 for month in consumption_raw['months']:
-    if 'hourly_values_netted' in month:
-        for hourly in month['hourly_values_netted']:
-            timestamp = datetime.strptime(hourly['t'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=ZoneInfo("Europe/Helsinki"))
+    if 'hourly_values' in month and month['hourly_values']:  # Check if hourly_values exists and is not empty
+        for hourly in month['hourly_values']:
+            # Handle both cases: with 't' key and without
+            if 't' in hourly:
+                timestamp_str = hourly['t']
+            else:
+                # If no timestamp, construct it from the month data
+                # Assuming the values are in order starting from the beginning of the month
+                month_num = month['month']
+                hour_index = month['hourly_values'].index(hourly)
+                timestamp = datetime(int(YEAR), month_num, 1) + timedelta(hours=hour_index)
+                timestamp_str = timestamp.strftime('%Y-%m-%dT%H:%M:%S')
+            
+            timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S').replace(tzinfo=ZoneInfo("Europe/Helsinki"))
             consumption_dict[timestamp] = hourly['v'] / 1000  # Convert to kWh
 
 # Load Vattenfall price data

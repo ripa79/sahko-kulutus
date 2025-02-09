@@ -154,22 +154,41 @@ def fetch_consumption_data():
         # Extract customer ID (first key in customer_datas)
         customer_id = next(iter(metadata.get('customer_datas', {})))
         
+        # Log the full metadata structure for debugging
+        logger.info("Full metadata response:")
+        logger.info(json.dumps(metadata, indent=2))
+        
         # Extract customer data using the customer ID
         customer_data = metadata['customer_datas'][customer_id]
+        
+        # Log the customer data structure
+        logger.info(f"Customer data for ID {customer_id}:")
+        logger.info(json.dumps(customer_data, indent=2))
+        
+        # Log meteringpoints information
+        logger.info("Metering points:")
+        for meteringpoint in customer_data.get('meteringpoints', []):
+            logger.info(f"Metering point data:")
+            logger.info(json.dumps(meteringpoint, indent=2))
+            logger.info(f"Additional information: {meteringpoint.get('additional_information')}")
+            logger.info(f"Device name: {meteringpoint.get('device', {}).get('name')}")
+            logger.info(f"GSRN: {meteringpoint.get('gsrn')}")
         
         # Find consumption and production GSRNs
         consumption_gsrn = None
         production_gsrn = None
         
         for meteringpoint in customer_data.get('meteringpoints', []):
-            if 'additional_information' in meteringpoint:
-                if meteringpoint['additional_information'] == 'Liittymällä tuotannon käyttöpaikka.':
-                    # This is the consumption point
-                    consumption_gsrn = meteringpoint.get('gsrn')
-                # Check if this is the production point by looking for the virtual device
-                if meteringpoint.get('device', {}).get('name') == 'Tuotannon virtuaalilaite':
-                    production_gsrn = meteringpoint.get('gsrn')
-        
+            # Check the type field for consumption points
+            if meteringpoint.get('type') == 'kulutus':
+                consumption_gsrn = meteringpoint.get('gsrn')
+                logger.info(f"Found consumption GSRN from type='kulutus': {consumption_gsrn}")
+                
+            # For production, we still look for the virtual device
+            if meteringpoint.get('device', {}).get('name') == 'Tuotannon virtuaalilaite':
+                production_gsrn = meteringpoint.get('gsrn')
+                logger.info(f"Found production GSRN from virtual device: {production_gsrn}")
+
         logger.info(f"GSRN for consumption: {consumption_gsrn}")
         logger.info(f"GSRN for production: {production_gsrn}")
         
