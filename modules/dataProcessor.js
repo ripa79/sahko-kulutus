@@ -61,12 +61,14 @@ class DataProcessor {
             // Process consumption data and combine with prices
             const combinedData = [];
             for (const month of consumptionData.months || []) {
-                if (month.hourly_values_netted) {
-                    for (const reading of month.hourly_values_netted) {
+                if (month.hourly_values) {  // Changed from hourly_values_netted to hourly_values
+                    for (const reading of month.hourly_values) {
                         const consumption = reading.v / 1000; // Convert Wh to kWh
-                        const date = new Date(reading.t);
+                        const timestamp = reading.t; // Use the timestamp directly from the data
+
                         // Format timestamp in Helsinki timezone (+0200)
-                        const timestamp = date.toLocaleString('sv', { 
+                        const date = new Date(timestamp);
+                        const formattedTimestamp = date.toLocaleString('sv', { 
                             timeZone: 'Europe/Helsinki',
                             year: 'numeric',
                             month: '2-digit',
@@ -76,16 +78,16 @@ class DataProcessor {
                             second: '2-digit'
                         }).replace(' ', 'T') + '+0200';
 
-                        const price = priceMap.get(timestamp);
+                        const price = priceMap.get(formattedTimestamp);
                         
-                        if (price !== undefined) {
+                        if (price !== undefined && !isNaN(consumption)) {
                             // Keep original price for display
                             const price_display = Number(price.toFixed(2));
                             // Add spot margin only for cost calculation
                             const cost = (consumption * (price + this.spotMargin)) / 100;
 
                             combinedData.push({
-                                timestamp,
+                                timestamp: formattedTimestamp,
                                 consumption_kWh: Number(consumption.toFixed(3)),
                                 price_cents_per_kWh: price_display,
                                 cost_euros: Number(cost.toFixed(6))
@@ -93,6 +95,13 @@ class DataProcessor {
                         }
                     }
                 }
+            }
+
+            // Debug logging
+            console.log(`Processed ${combinedData.length} combined data entries`);
+            if (combinedData.length > 0) {
+                console.log('First entry:', combinedData[0]);
+                console.log('Last entry:', combinedData[combinedData.length - 1]);
             }
 
             // Sort by timestamp
