@@ -6,7 +6,7 @@ import requests
 import pytz
 import os
 from dotenv import load_dotenv
-from dateutil.parser import isoparse  # Add this import
+from dateutil.parser import isoparse
 
 # Load environment variables
 load_dotenv()
@@ -44,18 +44,27 @@ def analyze_data(data):
     total_cost = sum(row['cost'] for row in data)
     average_price = sum(row['price'] for row in data) / len(data)
 
-    monthly_data = defaultdict(lambda: {'consumption': 0, 'cost': 0, 'hours': 0})
+    monthly_data = defaultdict(lambda: {'consumption': 0, 'cost': 0, 'hours': 0, 'daily_consumption': defaultdict(float), 'prices': []})
     for row in data:
         month = row['date'].strftime('%Y-%m')
         monthly_data[month]['consumption'] += row['consumption']
         monthly_data[month]['cost'] += row['cost']
         monthly_data[month]['hours'] += 1
+        monthly_data[month]['prices'].append(row['price'])
+        monthly_data[month]['daily_consumption'][row['date'].strftime('%Y-%m-%d')] += row['consumption']
+
+    # Calculate monthly averages
+    for month, data in monthly_data.items():
+        num_days = len(data['daily_consumption'])
+        data['average_daily_consumption'] = data['consumption'] / num_days if num_days > 0 else 0
+        data['average_monthly_price'] = sum(data['prices']) / len(data['prices']) if data['prices'] else 0
 
     fixed_price = float(os.getenv('FIXED_PRICE', 8.5))  # Default to 8.5 if not set
     fixed_price_total_cost = total_consumption * fixed_price / 100  # Convert to EUR
 
     for month, data in monthly_data.items():
         data['fixed_price_cost'] = data['consumption'] * fixed_price / 100
+
 
     savings = fixed_price_total_cost - total_cost
 
@@ -66,7 +75,7 @@ def analyze_data(data):
         'monthly_data': monthly_data,
         'fixed_price_total_cost': fixed_price_total_cost,
         'savings': savings,
-        'fixed_price': fixed_price  # Add this line to include the fixed price in the analysis results
+        'fixed_price': fixed_price
     }
 
 def get_current_spot_price():
@@ -96,13 +105,13 @@ def print_analysis(analysis):
     # Get the current time in Finland's timezone (EEST/EET)
     finland_tz = pytz.timezone('Europe/Helsinki')
     current_time = datetime.now(finland_tz)
-    
+
     # Determine if it's EEST (UTC+3) or EET (UTC+2)
     if current_time.tzinfo.dst(current_time) != timedelta(0):
         tz_name = "EEST"
     else:
         tz_name = "EET"
-    
+
     current_time_str = current_time.strftime(f'%Y-%m-%d %H:%M:%S {tz_name}')
 
     print(f"\n{Colors.CYAN}{'=' * 80}{Colors.RESET}")
@@ -127,36 +136,44 @@ def print_analysis(analysis):
     print(f"{Colors.CYAN}Spot price average for the whole year: {Colors.YELLOW}{analysis['average_price']:.2f} snt/kWh{Colors.RESET}")
     print(f"\n{Colors.PURPLE}Monthly analysis:{Colors.RESET}")
     fixed_price = analysis['fixed_price']  # Use the fixed price from the analysis results
-    
+
     # Define column widths
     month_width = 10
     price_width = 15
     consumption_width = 25
     cost_width = 20
+    avg_cost_width = 25
 
     # Print header
-    print(f"{'Month':<{month_width}} {'Price':<{price_width}} {'Consumption':<{consumption_width}} {'Cost':<{cost_width}}")
-    
+    print(f"\n{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(f"{Colors.YELLOW}Monthly Breakdown{Colors.RESET}")
+    print(f"{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(f"{'Month':<{month_width}} {'Avg Spot':<{price_width}} {'Consumption':<{consumption_width}} {'Actual Cost':<{cost_width}} {'Cost with Avg Price':<{avg_cost_width}}")
+
     for month, data in analysis['monthly_data'].items():
-        avg_price = data['cost'] / (data['consumption'] / 100)
+        avg_price = data['average_monthly_price']
         if avg_price < fixed_price:
-            arrow = f"{Colors.GREEN}▼{Colors.RESET}"  # Green down triangle when spot price was lower (spot was better)
+            arrow = f"{Colors.GREEN}▼{Colors.RESET}"
         else:
-            arrow = f"{Colors.RED}▲{Colors.RESET}"  # Red up triangle when spot price was higher (fixed was better)
-        
+            arrow = f"{Colors.RED}▲{Colors.RESET}"
+
+        # Calculate cost with average price for this month
+        cost_with_avg_price = data['consumption'] * analysis['average_price'] / 100
+
         month_str = f"{Colors.BLUE}{month}:{Colors.RESET}"
         price_str = f"{arrow} {Colors.YELLOW}{avg_price:.2f} snt/kWh{Colors.RESET}"
         consumption_str = f"Consumption: {Colors.YELLOW}{data['consumption']:.2f} kWh{Colors.RESET}"
         cost_str = f"Cost: {Colors.YELLOW}{data['cost']:.2f} EUR{Colors.RESET}"
-        
-        print(f"{month_str:<{month_width}} {price_str:<{price_width}} {consumption_str:<{consumption_width}} {cost_str:<{cost_width}}")
+        avg_cost_str = f"{Colors.YELLOW}{cost_with_avg_price:.2f} EUR{Colors.RESET}"
+
+        print(f"{month_str:<{month_width}} {price_str:<{price_width}} {consumption_str:<{consumption_width}} {cost_str:<{cost_width}} {avg_cost_str:<{avg_cost_width}}")
 
     print(f"\n{Colors.CYAN}Total consumption: {Colors.YELLOW}{analysis['total_consumption']:.2f} kWh{Colors.RESET}")
     print(f"{Colors.CYAN}Total cost with spot pricing: {Colors.YELLOW}{analysis['total_cost']:.2f} EUR{Colors.RESET}")
     print(f"{Colors.CYAN}Total cost with {analysis['fixed_price']} snt/kWh fixed price: {Colors.YELLOW}{analysis['fixed_price_total_cost']:.2f} EUR{Colors.RESET}")
 
     print(f"\n{Colors.YELLOW}Final Analysis{Colors.RESET}")
-    
+
     if analysis['savings'] > 0:
         print(f"{Colors.WHITE}With the spot price contract, you saved:{Colors.RESET}")
         print(f"{Colors.GREEN}{analysis['savings']:.2f} EUR over the year.{Colors.RESET}")
@@ -165,20 +182,20 @@ def print_analysis(analysis):
         print(f"{Colors.WHITE}With the spot price contract, you spent more:{Colors.RESET}")
         print(f"{Colors.RED}{-analysis['savings']:.2f} EUR over the year.{Colors.RESET}")
         print(f"{Colors.GRAY}The fixed-price contract ({analysis['fixed_price']} snt/kWh) would have been cheaper.{Colors.RESET}")
-    
+
     percent_diff = (analysis['savings'] / analysis['fixed_price_total_cost']) * 100
     if percent_diff > 0:
         print(f"{Colors.WHITE}This is equivalent to a {Colors.GREEN}{abs(percent_diff):.2f}% decrease{Colors.WHITE} in your total electricity cost.{Colors.RESET}")
     else:
-        print(f"{Colors.WHITE}This is equivalent to a {Colors.RED}{abs(percent_diff):.2f}% increase{Colors.WHITE} in your total electricity cost.{Colors.RESET}")
+        print(f"{Colors.WHITE}This is equivalent to a {Colors.RED}{abs(percent_diff)::.2f}% increase{Colors.WHITE} in your total electricity cost.{Colors.RESET}")
 
     # Update the conclusion line
     print(f"\n{Colors.YELLOW}Conclusion: {Colors.WHITE}The {'spot' if analysis['savings'] > 0 else 'fixed'} price contract was more beneficial for you this year.{Colors.RESET}")
 
 def plot_monthly_analysis(analysis):
-    fixed_price = analysis['fixed_price']  # Use the fixed price from the analysis results
+    fixed_price = analysis['fixed_price']
     monthly_summary = []
-    
+
     for month, data in analysis['monthly_data'].items():
         fixed_cost = data['consumption'] * fixed_price / 100  # Convert to EUR
         savings = fixed_cost - data['cost']
@@ -186,15 +203,17 @@ def plot_monthly_analysis(analysis):
             'Month': month,
             'savings': savings,
             'total_cost': data['cost'],
-            'fixed_cost': fixed_cost
+            'fixed_cost': fixed_cost,
+            'average_daily_consumption': data['average_daily_consumption'], # Add average daily consumption
+            'average_monthly_price' : data['average_monthly_price'],       #Add average montly price
         })
-    
+
     # Sort the monthly summary by date
     monthly_summary.sort(key=lambda x: datetime.strptime(x['Month'], '%Y-%m'))
-    
-    # Create a figure with two subplots side by side
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))
-    
+
+    # Create a figure with three subplots: savings, cost comparison, and average daily consumption
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 8))
+
     # Plotting the monthly savings
     bars = ax1.bar([item['Month'] for item in monthly_summary], [item['savings'] for item in monthly_summary], color='skyblue')
     ax1.set_xlabel('Month')
@@ -218,6 +237,14 @@ def plot_monthly_analysis(analysis):
     ax2.tick_params(axis='x', rotation=45)
     ax2.legend()
     ax2.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Plotting average daily consumption
+    ax3.plot([item['Month'] for item in monthly_summary], [item['average_daily_consumption'] for item in monthly_summary], label='Avg Daily Consumption', marker='o', color='g')
+    ax3.set_xlabel('Month')
+    ax3.set_ylabel('Average Daily Consumption (kWh)')
+    ax3.set_title('Monthly Average Daily Consumption')
+    ax3.tick_params(axis='x', rotation=45)
+    ax3.grid(axis='y', linestyle='--', alpha=0.7)
 
     # Adjust layout and display the plot
     plt.tight_layout()
