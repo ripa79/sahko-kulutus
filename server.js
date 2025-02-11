@@ -64,6 +64,18 @@ app.get('/api/analysis', async (req, res) => {
     }
 });
 
+// API endpoint to get configuration
+app.get('/api/config', (req, res) => {
+    log('Received request for configuration');
+    try {
+        const fixedPrice = parseFloat(process.env.FIXED_PRICE) || 8.5; // Default to 8.5 if not set
+        res.json({ fixedPrice });
+    } catch (error) {
+        logError('Error getting configuration:', error);
+        res.status(500).json({ error: 'Failed to get configuration', details: error.message });
+    }
+});
+
 // API endpoint to manually trigger data update
 app.post('/api/update', async (req, res) => {
     log('Received manual update request');

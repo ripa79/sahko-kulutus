@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annual Summary - Electricity Consumption</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">← Back to Dashboard</a>
+            <button id="updateData">Update Data</button>
+        </nav>
+
+        <main>
+            <div id="loading" style="display: none;">
+                Loading data...
+            </div>
+            
+            <div id="error" style="display: none;"></div>
+
+            <div id="content">
+                <h1>Annual Summary</h1>
+                
+                <div class="summary-section" id="yearSummary">
+                    <!-- Year summary will be inserted here -->
+                </div>
+
+                <div class="summary-section">
+                    <h2>Monthly Analysis</h2>
+                    <table class="summary-table" id="monthlyTable">
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Price</th>
+                                <th>Consumption</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Monthly data will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="summary-section">
+                    <h2>Final Analysis</h2>
+                    <div id="finalAnalysis">
+                        <!-- Final analysis will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>window.CHART_TYPE = 'annual';</script>
+    <script src="app.js"></script>
+</body>
+</html>

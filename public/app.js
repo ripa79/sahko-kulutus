@@ -136,7 +136,7 @@ function initializeChart(chartId) {
 }
 
 // Update createCharts function to handle async initialization properly
-async function createCharts(data) {
+async function createCharts(data, fixedPrice) {
     const chartType = window.CHART_TYPE || 'overview';
     
     try {
@@ -164,6 +164,9 @@ async function createCharts(data) {
             case 'patterns':
                 await createHourlyChart(data);
                 await initializeChart('hourlyChart');
+                break;
+            case 'annual':
+                createAnnualSummary(data, fixedPrice);
                 break;
         }
     } catch (error) {
@@ -794,25 +797,37 @@ async function fetchData() {
         contentElement.style.display = 'none';
         errorElement.style.display = 'none';
 
-        // First check if we need to update the data
-        const response = await fetch('/api/analysis');
-        if (!response.ok) {
-            if (response.status === 404) {
+        // Add fetching of fixed price from server
+        const [analysisResponse, configResponse] = await Promise.all([
+            fetch('/api/analysis'),
+            fetch('/api/config')
+        ]);
+        
+        if (!analysisResponse.ok || !configResponse.ok) {
+            if (analysisResponse.status === 404) {
                 console.log('No data found, triggering initial update...');
                 await fetch('/api/update', { method: 'POST' });
-                // Fetch the data again after update
-                const updatedResponse = await fetch('/api/analysis');
-                if (!updatedResponse.ok) {
-                    throw new Error(`HTTP error after update! status: ${updatedResponse.status}`);
+                const [updatedResponse, updatedConfig] = await Promise.all([
+                    fetch('/api/analysis'),
+                    fetch('/api/config')
+                ]);
+                if (!updatedResponse.ok || !updatedConfig.ok) {
+                    throw new Error(`HTTP error after update!`);
                 }
-                const result = await updatedResponse.json();
-                return await processData(result, loadingElement, contentElement, errorElement);
+                const [result, config] = await Promise.all([
+                    updatedResponse.json(),
+                    updatedConfig.json()
+                ]);
+                return await processData(result, config, loadingElement, contentElement, errorElement);
             }
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error!`);
         }
 
-        const result = await response.json();
-        return await processData(result, loadingElement, contentElement, errorElement);
+        const [result, config] = await Promise.all([
+            analysisResponse.json(),
+            configResponse.json()
+        ]);
+        return await processData(result, config, loadingElement, contentElement, errorElement);
 
     } catch (error) {
         console.error('Error fetching data:', error);
@@ -826,7 +841,7 @@ async function fetchData() {
 }
 
 // Helper function to process the fetched data
-async function processData(result, loadingElement, contentElement, errorElement) {
+async function processData(result, config, loadingElement, contentElement, errorElement) {
     // Debug the data
     console.log('Raw CSV data:', result.data);
     
@@ -864,7 +879,7 @@ async function processData(result, loadingElement, contentElement, errorElement)
     // Create charts after DOM update
     setTimeout(async () => {
         try {
-            await createCharts(data);
+            await createCharts(data, config.fixedPrice);
         } catch (error) {
             console.error('Error creating charts:', error);
             errorElement.innerHTML = `
@@ -910,3 +925,88 @@ window.addEventListener('resize', () => {
         charts.forEach(resizeChart);
     }, 100);
 });
+
+function createAnnualSummary(data, fixedPrice) {
+    // Calculate total consumption and costs
+    const totalConsumption = data.reduce((sum, row) => sum + parseFloat(row.consumption_kWh), 0);
+    const totalSpotCost = data.reduce((sum, row) => sum + parseFloat(row.cost_euros), 0);
+    const fixedPriceTotalCost = totalConsumption * fixedPrice / 100; // Convert cents to EUR
+    const savings = fixedPriceTotalCost - totalSpotCost;
+
+    // Calculate average spot price
+    const avgSpotPrice = data.reduce((sum, row) => sum + parseFloat(row.price_cents_per_kWh), 0) / data.length;
+    
+    // Group by month
+    const monthlyData = data.reduce((acc, row) => {
+        const date = new Date(row.timestamp);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!acc[monthKey]) {
+            acc[monthKey] = {
+                consumption: 0,
+                cost: 0,
+                fixedCost: 0,
+                prices: []
+            };
+        }
+        
+        const consumption = parseFloat(row.consumption_kWh);
+        acc[monthKey].consumption += consumption;
+        acc[monthKey].cost += parseFloat(row.cost_euros);
+        acc[monthKey].fixedCost += consumption * fixedPrice / 100;
+        acc[monthKey].prices.push(parseFloat(row.price_cents_per_kWh));
+        
+        return acc;
+    }, {});
+
+    // Create monthly analysis HTML
+    let tableHtml = '';
+    Object.entries(monthlyData).sort().forEach(([month, data]) => {
+        const avgMonthPrice = data.prices.reduce((a, b) => a + b) / data.prices.length;
+        // Compare with fixed price instead of average spot price
+        const trend = avgMonthPrice > fixedPrice ? '▲' : '▼';
+        const trendClass = avgMonthPrice > fixedPrice ? 'trend-up' : 'trend-down';
+        
+        tableHtml += `
+            <tr>
+                <td>${month}</td>
+                <td><span class="${trendClass}">${trend} ${avgMonthPrice.toFixed(2)} snt/kWh</span></td>
+                <td>${data.consumption.toFixed(2)} kWh</td>
+                <td>${data.cost.toFixed(2)} EUR</td>
+            </tr>
+        `;
+    });
+
+    const yearSummaryHtml = `
+        <div>
+            <h2>Annual Summary</h2>
+            <p>Total year cost with spot pricing: 
+                <span class="highlight">${totalSpotCost.toFixed(2)} EUR</span>
+            </p>
+            <p>Total cost with fixed price (${fixedPrice.toFixed(1)} snt/kWh): 
+                <span class="highlight">${fixedPriceTotalCost.toFixed(2)} EUR</span>
+            </p>
+            <p>Average spot price for the whole year: 
+                <span class="highlight">${avgSpotPrice.toFixed(2)} snt/kWh</span>
+            </p>
+        </div>
+    `;
+
+    const finalAnalysisHtml = `
+        <p>Total consumption: <span class="highlight">${totalConsumption.toFixed(2)} kWh</span></p>
+        <p>Total cost with spot pricing: <span class="highlight">${totalSpotCost.toFixed(2)} EUR</span></p>
+        <p>Total cost with ${fixedPrice.toFixed(1)} snt/kWh fixed price: <span class="highlight">${fixedPriceTotalCost.toFixed(2)} EUR</span></p>
+        
+        <div class="savings-card ${savings > 0 ? 'positive-savings' : 'negative-savings'}">
+            <h3>With the spot price contract, you ${savings > 0 ? 'saved' : 'spent more'}:</h3>
+            <p class="highlight">${Math.abs(savings).toFixed(2)} EUR over the year</p>
+            <p>Compared to the fixed-price contract (${fixedPrice.toFixed(1)} snt/kWh)</p>
+            <p>This is equivalent to a ${Math.abs((savings / fixedPriceTotalCost) * 100).toFixed(2)}% ${savings > 0 ? 'decrease' : 'increase'} in your electricity cost.</p>
+        </div>
+    `;
+
+    // Update the DOM
+    document.getElementById('yearSummary').innerHTML = yearSummaryHtml;
+    document.getElementById('monthlyTable').querySelector('tbody').innerHTML = tableHtml;
+    document.getElementById('finalAnalysis').innerHTML = finalAnalysisHtml;
+}
