@@ -61,8 +61,9 @@ class DataProcessor {
             // Process consumption data and combine with prices
             const combinedData = [];
             for (const month of consumptionData.months || []) {
-                if (month.hourly_values) {  // Changed from hourly_values_netted to hourly_values
-                    for (const reading of month.hourly_values) {
+                const readings = month.hourly_values_netted || month.hourly_values;
+                if (readings) {
+                    for (const reading of readings) {
                         const consumption = reading.v / 1000; // Convert Wh to kWh
                         const timestamp = reading.t; // Use the timestamp directly from the data
 
