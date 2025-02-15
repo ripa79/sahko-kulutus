@@ -945,8 +945,7 @@ function createAnnualSummary(data, fixedPrice) {
             acc[monthKey] = {
                 consumption: 0,
                 cost: 0,
-                fixedCost: 0,
-                prices: []
+                fixedCost: 0
             };
         }
         
@@ -954,7 +953,6 @@ function createAnnualSummary(data, fixedPrice) {
         acc[monthKey].consumption += consumption;
         acc[monthKey].cost += parseFloat(row.cost_euros);
         acc[monthKey].fixedCost += consumption * fixedPrice / 100;
-        acc[monthKey].prices.push(parseFloat(row.price_cents_per_kWh));
         
         return acc;
     }, {});
@@ -962,15 +960,14 @@ function createAnnualSummary(data, fixedPrice) {
     // Create monthly analysis HTML
     let tableHtml = '';
     Object.entries(monthlyData).sort().forEach(([month, data]) => {
-        const avgMonthPrice = data.prices.reduce((a, b) => a + b) / data.prices.length;
-        // Compare with fixed price instead of average spot price
-        const trend = avgMonthPrice > fixedPrice ? '▲' : '▼';
-        const trendClass = avgMonthPrice > fixedPrice ? 'trend-up' : 'trend-down';
+        const actualMonthlyPrice = (data.cost / data.consumption) * 100; // Convert to cents/kWh
+        const trend = actualMonthlyPrice > fixedPrice ? '▲' : '▼';
+        const trendClass = actualMonthlyPrice > fixedPrice ? 'trend-up' : 'trend-down';
         
         tableHtml += `
             <tr>
                 <td>${month}</td>
-                <td><span class="${trendClass}">${trend} ${avgMonthPrice.toFixed(2)} snt/kWh</span></td>
+                <td><span class="${trendClass}">${trend} ${actualMonthlyPrice.toFixed(2)} snt/kWh</span></td>
                 <td>${data.consumption.toFixed(2)} kWh</td>
                 <td>${data.cost.toFixed(2)} EUR</td>
             </tr>
