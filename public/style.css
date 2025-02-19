@@ -235,3 +235,31 @@ h3 {
         min-height: 250px;
     }
 }
+
+/* Added styles for forms in settings */
+form input[type="text"],
+form input[type="password"] {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    border: 1px solid #2c3235;
+    border-radius: 4px;
+    background: #2c3238;
+    color: #d8d9da;
+}
+
+form label {
+    display: block;
+    margin-top: 1rem;
+}
+
+form button {
+    background: #3274D9;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+    margin-top: 1rem;
+}

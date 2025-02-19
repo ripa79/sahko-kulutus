@@ -2,9 +2,9 @@
 
 ## Setup
 
-You can use Python, Node.js, or Docker to run this project.
+You can use Node.js or Docker to run this project.
 
-### Python Setup
+### Node.js Setup
 
 1. Create a .env file with the following variables:
 
@@ -14,44 +14,6 @@ ELENIA_PASSWORD=<your password>
 SPOT_MARGIN=0.6
 YEAR="2025"
 ```
-
-2. Create a virtual environment and install the dependencies:
-
-#### Windows
-
-```
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-#### macOS/Linux
-
-```
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-3. Run the shell script to execute all the steps:
-
-```
-./run_analysis.sh  # Linux/macOS
-run_analysis.ps1   # Windows
-```
-
-Alternatively, you can run the scripts individually:
-
-```
-python 1_elenia_consumption_data.py
-python 2_vattenfall_price_data.py
-python 3_combine.py
-python 4_data_analysis.py
-```
-
-### Node.js Setup
-
-1. Use the same .env file as above
 
 2. Install dependencies:
 ```
@@ -84,7 +46,7 @@ The server automatically updates data daily at 2 AM and creates required directo
 
 ### Docker Setup
 
-1. Create a .env file as described in the Python/Node.js setup sections above.
+1. Create a .env file as described in the Node.js setup section above.
 
 2. Build and run using Docker Compose:
 ```
@@ -98,8 +60,6 @@ This will:
 - Load environment variables from .env file
 - Automatically restart the container unless stopped manually
 
-Note: The Docker container runs only the Node.js web server. To run the Python data analysis scripts, you'll need to follow the Python setup instructions separately.
-
 To view logs:
 ```
 docker compose logs -f
@@ -108,4 +68,5 @@ docker compose logs -f
 To stop the container:
 ```
 docker compose down
+```
 

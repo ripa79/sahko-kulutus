@@ -18,8 +18,15 @@ class VattenfallService {
         const endDate = `${year}-12-31`;
         const url = `https://www.vattenfall.fi/api/price/spot/${startDate}/${endDate}?lang=fi`;
 
+        // Debug: log the URL being requested
+        console.log("Debug: Fetching prices from URL:", url);
+
         try {
             const response = await axios.get(url, { headers: this.headers });
+            
+            // Debug: log the response status code
+            console.log("Debug: Response status:", response.status);
+
             const data = response.data;
 
             // Add VAT (25.5%) to the values
@@ -41,6 +48,8 @@ class VattenfallService {
             console.log(`Successfully fetched and saved Vattenfall price data for ${year}`);
             return processedData;
         } catch (error) {
+            // Debug: log full error details for debugging
+            console.error("Debug: Full error details:", error);
             console.error('Failed to fetch Vattenfall price data:', error.message);
             throw error;
         }

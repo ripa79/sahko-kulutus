@@ -76,6 +76,51 @@ app.get('/api/config', (req, res) => {
     }
 });
 
+// New API endpoint to expose selected .env settings with masked password
+app.get('/api/settings', (req, res) => {
+    const allowedKeys = ["ELENIA_USERNAME", "ELENIA_PASSWORD", "YEAR", "SPOT_MARGIN"];
+    const filteredSettings = {};
+    allowedKeys.forEach(key => {
+        filteredSettings[key] = key === "ELENIA_PASSWORD" ? "******" : (process.env[key] || "");
+    });
+    res.json({ settings: filteredSettings });
+});
+
+// New API endpoint to update selected .env settings
+app.post('/api/settings', async (req, res) => {
+    const { ELENIA_USERNAME, ELENIA_PASSWORD, ELENIA_PASSWORD_CONFIRM, YEAR, SPOT_MARGIN } = req.body;
+    // Basic validation
+    if (!ELENIA_USERNAME || !YEAR || !SPOT_MARGIN) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    if (ELENIA_PASSWORD || ELENIA_PASSWORD_CONFIRM) {
+        if (ELENIA_PASSWORD !== ELENIA_PASSWORD_CONFIRM) {
+            return res.status(400).json({ error: 'Passwords do not match' });
+        }
+    }
+    // Update process.env (only update password if provided)
+    process.env.ELENIA_USERNAME = ELENIA_USERNAME;
+    process.env.YEAR = YEAR;
+    process.env.SPOT_MARGIN = SPOT_MARGIN;
+    if (ELENIA_PASSWORD) {
+        process.env.ELENIA_PASSWORD = ELENIA_PASSWORD;
+    }
+    // Prepare .env file content with allowed keys
+    const envContent =
+`ELENIA_USERNAME=${ELENIA_USERNAME}
+ELENIA_PASSWORD=${process.env.ELENIA_PASSWORD}
+YEAR=${YEAR}
+SPOT_MARGIN=${SPOT_MARGIN}
+`;
+    try {
+        await fs.writeFile(path.join(__dirname, '.env'), envContent, 'utf-8');
+        return res.json({ message: 'Settings updated successfully' });
+    } catch (error) {
+        logError('Error updating .env file:', error);
+        return res.status(500).json({ error: 'Failed to update settings', details: error.message });
+    }
+});
+
 // API endpoint to manually trigger data update
 app.post('/api/update', async (req, res) => {
     log('Received manual update request');

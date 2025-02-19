@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Sähkö Kulutus</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Update Application Settings</h1>
+        <nav class="nav-bar">
+            <a href="index.html" class="nav-link">Dashboard</a>
+        </nav>
+        <section id="settingsContent">
+            <div class="card">
+                <form id="settingsForm">
+                    <label>
+                        Year:
+                        <input type="text" name="YEAR" required>
+                    </label>
+                    <br>
+                    <label>
+                        Spot Margin:
+                        <input type="text" name="SPOT_MARGIN" required>
+                    </label>
+                    <br>
+                    <!-- Updated checkbox to update credentials -->
+                    <label>
+                        <input type="checkbox" id="updateCredentialsCheck">
+                        Update Username and Password
+                    </label>
+                    <br>
+                    <!-- Credentials fields container, hidden by default -->
+                    <div id="credentialsFields" style="display: none;">
+                        <label>
+                            Elenia Username:
+                            <input type="text" name="ELENIA_USERNAME" disabled>
+                        </label>
+                        <br>
+                        <label>
+                            New Password:
+                            <input type="password" name="ELENIA_PASSWORD">
+                        </label>
+                        <br>
+                        <label>
+                            Confirm New Password:
+                            <input type="password" name="ELENIA_PASSWORD_CONFIRM">
+                        </label>
+                        <br>
+                    </div>
+                    <button type="submit">Update Settings</button>
+                </form>
+            </div>
+            <div id="settingsMessage"></div>
+        </section>
+    </div>
+    <script src="settings.js"></script>
+</body>
+</html>
