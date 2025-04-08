@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consumption - Sähkö Kulutus</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-bar">
+            <a href="/" class="nav-link">← Back to Dashboard</a>
+            <button id="updateData">Update Data</button>
+        </nav>
+        <h1>Consumption Analysis</h1>
+        <p id="loading">Loading data...</p>
+        <div id="content">
+            <div class="chart-container" id="savingsChart"></div>
+        </div>
+        <div id="error"></div>
+    </div>
+    <script>
+        window.CHART_TYPE = 'consumption';
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>

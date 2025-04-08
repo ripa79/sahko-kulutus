@@ -63,9 +63,10 @@ app.post('/api/update', async (req, res) => {
     }
 });
 
-// Catch all route for SPA
-app.get('*', (req, res) => {
-    res.sendFile(path.join(staticPath, 'index.html'));
+// Move catch-all route to be last and update path handling
+app.get(['/', '/overview', '/consumption', '/prices', '/patterns'], (req, res) => {
+    const page = req.path === '/' ? 'index.html' : `${req.path.slice(1)}.html`;
+    res.sendFile(path.join(staticPath, page));
 });
 
 // Function to update all data

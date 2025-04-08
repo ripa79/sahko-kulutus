@@ -8,6 +8,10 @@ __pycache__/
 
 # node.js
 node_modules/
+.env
+downloads/*.json
+downloads/*.csv
+processed/*.csv
 npm-debug.log
 yarn-error.log
 

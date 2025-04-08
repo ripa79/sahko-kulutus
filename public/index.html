@@ -4,32 +4,86 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sähkö Kulutus</title>
+    <style>
+        body {
+            background-color: #181b1f;
+            color: #d8d9da;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #ffffff;
+            margin-bottom: 1.5rem;
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            text-align: center;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .card {
+            background: #212529;
+            border-radius: 4px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s;
+            cursor: pointer;
+            text-decoration: none;
+            color: #d8d9da;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            background: #2c3238;
+        }
+        .card h2 {
+            color: #3274D9;
+            margin-top: 0;
+            font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+        }
+        .card p {
+            margin-bottom: 0;
+            opacity: 0.8;
+            font-size: clamp(0.9rem, 1.5vw, 1.1rem);
+        }
+        @media (max-width: 480px) {
+            .container {
+                width: 100%;
+                padding: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Sähkö Kulutus</h1>
-    <div id="content">
-        <p>Loading data...</p>
+    <div class="container">
+        <h1>Sähkö Kulutus Dashboard</h1>
+        <div class="dashboard-grid">
+            <a href="/overview" class="card">
+                <h2>Overview</h2>
+                <p>Key metrics and summary statistics</p>
+            </a>
+            <a href="/consumption" class="card">
+                <h2>Consumption</h2>
+                <p>Daily consumption patterns and trends</p>
+            </a>
+            <a href="/prices" class="card">
+                <h2>Prices</h2>
+                <p>Daily and cumulative electricity prices</p>
+            </a>
+            <a href="/patterns" class="card">
+                <h2>Usage Patterns</h2>
+                <p>Weekly consumption heatmap analysis</p>
+            </a>
+        </div>
     </div>
-    <button id="updateButton">Update Data</button>
-    <div id="error"></div>
-    <script>
-        // Inline script for immediate testing
-        console.log('Page loaded');
-        
-        document.getElementById('updateButton').onclick = async () => {
-            try {
-                const response = await fetch('/api/analysis');
-                const data = await response.json();
-                document.getElementById('content').textContent = 
-                    JSON.stringify(data, null, 2);
-            } catch (error) {
-                document.getElementById('error').textContent = 
-                    'Error: ' + error.message;
-            }
-        };
-
-        // Load data on page load
-        window.onload = () => document.getElementById('updateButton').click();
-    </script>
 </body>
 </html>

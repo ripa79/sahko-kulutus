@@ -9,13 +9,19 @@ import os
 import requests
 from dotenv import load_dotenv
 import logging
+import argparse
 
 # ensure downloads folder exists
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
 
+# Set up argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('--debug', action='store_true', help='Enable debug logging')
+args = parser.parse_args()
+
 # Set up logging
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
@@ -141,6 +147,12 @@ def fetch_consumption_data():
         response.raise_for_status()
         metadata = response.json()
         logger.debug(f"Successfully parsed metadata response")
+        
+        # Save metadata to file
+        metadata_file = "downloads/metadata.json"
+        with open(metadata_file, "w", encoding='utf-8') as outfile:
+            json.dump(metadata, outfile, indent=2, ensure_ascii=False)
+        logger.info(f"Saved metadata to {metadata_file}")
         
         # Extract token from metadata
         api_token = metadata.get('token')
