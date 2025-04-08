@@ -26,7 +26,25 @@ consumption_dict = {}
 for month in consumption_raw['months']:
     if 'hourly_values_netted' in month:
         for hourly in month['hourly_values_netted']:
-            timestamp = datetime.strptime(hourly['t'], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=ZoneInfo("Europe/Helsinki"))
+            try:
+                # First try the standard format
+                timestamp = datetime.strptime(hourly['t'], '%Y-%m-%dT%H:%M:%S')
+                timestamp = timestamp.replace(tzinfo=ZoneInfo("Europe/Helsinki"))
+            except ValueError:
+                try:
+                    # Try with milliseconds
+                    timestamp = datetime.strptime(hourly['t'], '%Y-%m-%dT%H:%M:%S.%f')
+                    timestamp = timestamp.replace(tzinfo=ZoneInfo("Europe/Helsinki"))
+                except ValueError:
+                    try:
+                        # Try with UTC 'Z' suffix
+                        timestamp = datetime.strptime(hourly['t'].replace('Z', '+00:00'), '%Y-%m-%dT%H:%M:%S%z')
+                        # Convert UTC to Helsinki time
+                        timestamp = timestamp.astimezone(ZoneInfo("Europe/Helsinki"))
+                    except ValueError:
+                        print(f"Warning: Could not parse timestamp {hourly['t']} with any known format")
+                        continue
+            
             consumption_dict[timestamp] = hourly['v'] / 1000  # Convert to kWh
 
 # Load Vattenfall price data
